@@ -3,8 +3,8 @@ from enum import StrEnum
 from functools import cached_property
 from pathlib import Path
 from pydantic import BaseModel, Field, model_validator
-from pydantic_settings import BaseSettings
-from typing import Annotated, Self, TypeVar, overload
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Annotated, ClassVar, Self, TypeVar, overload
 from uuid import UUID
 from nexo.enums.environment import Environment
 from nexo.enums.system import SystemRole, ListOfSystemRoles
@@ -32,6 +32,8 @@ class Execution(StrEnum):
 
 
 class ApplicationContext(BaseSettings):
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(extra="ignore")
+
     environment: Annotated[Environment, Field(..., validation_alias="ENVIRONMENT")]
     service_key: Annotated[str, Field(..., validation_alias="SERVICE_KEY")]
 
@@ -51,6 +53,8 @@ class ApplicationContextMixin(BaseModel):
 
 
 class ApplicationSettings(BaseSettings):
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(extra="ignore")
+
     # Application related settings
     NAME: Annotated[str, Field(..., description="Application's name")]
     # Service related settings

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexo-schemas"
-version = "0.0.1"
+version = "0.0.2"
 description = "Schemas package for Nexo"
 authors = [
     { name = "Agra Bima Yuda", email = "agra@nexmedis.com" }
