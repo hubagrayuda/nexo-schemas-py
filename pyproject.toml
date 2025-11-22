@@ -94,35 +94,35 @@ dependencies = [
 
 [tool.setuptools]
 packages = [
-    "maleo.schemas",
-    "maleo.schemas.error",
-    "maleo.schemas.exception",
-    "maleo.schemas.key",
-    "maleo.schemas.mixins",
-    "maleo.schemas.operation",
-    "maleo.schemas.operation.action",
-    "maleo.schemas.security",
-    "maleo.schemas.success",
+    "nexo.schemas",
+    "nexo.schemas.error",
+    "nexo.schemas.exception",
+    "nexo.schemas.key",
+    "nexo.schemas.mixins",
+    "nexo.schemas.operation",
+    "nexo.schemas.operation.action",
+    "nexo.schemas.security",
+    "nexo.schemas.success",
 ]
 
 [tool.setuptools.package-data]
-"maleo.schemas" = ["*.json", "*.yaml"]
-"maleo.schemas.error" = ["*.json", "*.yaml"]
-"maleo.schemas.exception" = ["*.json", "*.yaml"]
-"maleo.schemas.key" = ["*.json", "*.yaml"]
-"maleo.schemas.mixins" = ["*.json", "*.yaml"]
-"maleo.schemas.operation" = ["*.json", "*.yaml"]
-"maleo.schemas.operation.action" = ["*.json", "*.yaml"]
-"maleo.schemas.security" = ["*.json", "*.yaml"]
-"maleo.schemas.success" = ["*.json", "*.yaml"]
+"nexo.schemas" = ["*.json", "*.yaml"]
+"nexo.schemas.error" = ["*.json", "*.yaml"]
+"nexo.schemas.exception" = ["*.json", "*.yaml"]
+"nexo.schemas.key" = ["*.json", "*.yaml"]
+"nexo.schemas.mixins" = ["*.json", "*.yaml"]
+"nexo.schemas.operation" = ["*.json", "*.yaml"]
+"nexo.schemas.operation.action" = ["*.json", "*.yaml"]
+"nexo.schemas.security" = ["*.json", "*.yaml"]
+"nexo.schemas.success" = ["*.json", "*.yaml"]
 
 [tool.setuptools.package-dir]
-"maleo.schemas" = "src"
-"maleo.schemas.error" = "src/error"
-"maleo.schemas.exception" = "src/exception"
-"maleo.schemas.key" = "src/key"
-"maleo.schemas.mixins" = "src/mixins"
-"maleo.schemas.operation" = "src/operation"
-"maleo.schemas.operation.action" = "src/operation/action"
-"maleo.schemas.security" = "src/security"
-"maleo.schemas.success" = "src/success"
+"nexo.schemas" = "src"
+"nexo.schemas.error" = "src/error"
+"nexo.schemas.exception" = "src/exception"
+"nexo.schemas.key" = "src/key"
+"nexo.schemas.mixins" = "src/mixins"
+"nexo.schemas.operation" = "src/operation"
+"nexo.schemas.operation.action" = "src/operation/action"
+"nexo.schemas.security" = "src/security"
+"nexo.schemas.success" = "src/success"
