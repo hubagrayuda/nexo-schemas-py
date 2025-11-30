@@ -1,4 +1,5 @@
 import os
+from functools import cached_property
 from google.cloud.pubsub_v1.publisher.futures import Future
 from logging import Logger
 from typing import Generic
@@ -113,6 +114,7 @@ class BaseOperation(
         labels = {
             "environment": self.application_context.environment,
             "service_key": self.application_context.service_key,
+            "instance_id": self.application_context.instance_id,
             "operation_id": str(self.id),
             "operation_type": self.type,
             "success": str(self.success),
@@ -209,15 +211,22 @@ class BaseOperation(
                 },
             )
 
-    def _is_allowed_to_publish(self) -> bool:
+    @cached_property
+    def allowed_to_publish(self) -> bool:
         # 1. Read from env (comma-separated string)
-        raw_value = os.getenv("PUBLISHABLE_OPERATIONS", "").strip()
+        raw_value = (
+            os.getenv("PUBLISHABLE_OPERATIONS", "")
+            .strip()
+            .removeprefix("[")
+            .removesuffix("]")
+            .replace(" ", "")
+        )
 
         # 2. Parse into list of OperationType
         publishable_ops: ListOfOperationTypes = []
         if raw_value:
             for v in raw_value.split(","):
-                v = v.strip().lower()
+                v = v.strip().replace('"', "").lower()
                 try:
                     publishable_ops.append(OperationTypeEnum(v))
                 except ValueError:
@@ -234,7 +243,7 @@ class BaseOperation(
         additional_labels: OptStrToStrDict = None,
         override_labels: OptStrToStrDict = None,
     ) -> list[Future]:
-        if not self._is_allowed_to_publish():
+        if not self.allowed_to_publish:
             return []
 
         labels = self.log_labels(
