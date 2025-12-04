@@ -16,7 +16,7 @@ class APIKeyType(StrEnum):
 KEY_BODY_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,256}$")
 
 
-def validate(api_key: str, environment: Environment):
+def validate(api_key: str, application: str, environment: Environment):
     components = api_key.split("-", maxsplit=3)
 
     # Validate components count
@@ -24,8 +24,10 @@ def validate(api_key: str, environment: Environment):
         raise ValueError("API Key must have excatly four components")
 
     # Ensure 'maleo' exist
-    if components[0] != "maleo":
-        raise ValueError("API Key must start with 'maleo' as the first component")
+    if components[0] != application:
+        raise ValueError(
+            f"API Key must start with '{application}' as the first component"
+        )
 
     # Ensure valid environment
     api_key_environment = components[1]

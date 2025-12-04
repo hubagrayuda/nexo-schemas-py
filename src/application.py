@@ -35,6 +35,7 @@ class Execution(StrEnum):
 class ApplicationContext(BaseSettings):
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(extra="ignore")
 
+    name: Annotated[str, Field(..., validation_alias="NAME")]
     environment: Annotated[Environment, Field(..., validation_alias="ENVIRONMENT")]
     service_key: Annotated[str, Field(..., validation_alias="SERVICE_KEY")]
 
@@ -76,7 +77,7 @@ class ApplicationSettings(BaseSettings):
     @cached_property
     def context(self) -> ApplicationContext:
         return ApplicationContext(
-            environment=self.ENVIRONMENT, service_key=self.SERVICE_KEY
+            name=self.NAME, environment=self.ENVIRONMENT, service_key=self.SERVICE_KEY
         )
 
     CLIENT_ID: Annotated[UUID, Field(..., description="Client's ID")]
@@ -161,7 +162,7 @@ class ApplicationSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_api_key(self) -> Self:
-        validate(self.API_KEY, self.ENVIRONMENT)
+        validate(self.API_KEY, self.NAME, self.ENVIRONMENT)
         return self
 
     @cached_property
