@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from enum import StrEnum
 from fastapi import status, HTTPException
 from fastapi.requests import HTTPConnection
+from functools import cached_property
 from pydantic import BaseModel, Field
 from starlette.authentication import (
     AuthCredentials as StarletteCredentials,
@@ -18,16 +19,19 @@ from typing import (
     overload,
 )
 from nexo.enums.organization import (
+    OrganizationRole,
     ListOfOrganizationRoles,
     OrganizationType,
     OptOrganizationType,
 )
 from nexo.enums.medical import (
+    MedicalRole,
+    ListOfMedicalRoles,
     OptSeqOfMedicalRoles,
     OptListOfMedicalRoles,
     OptListOfMedicalRolesT,
 )
-from nexo.enums.system import ListOfSystemRoles
+from nexo.enums.system import SystemRole, ListOfSystemRoles
 from nexo.enums.user import UserType, OptUserType
 from nexo.types.integer import OptInt
 from nexo.types.string import (
@@ -216,11 +220,13 @@ class AuthenticatedCredentials(
         EntityIdentifier[OrganizationType] | None,
         Field(..., description="Organization"),
     ]
-    domain_roles: Annotated[ListOfDomainRoles, Field(..., description="Domain Roles")]
+    domain_roles: Annotated[
+        ListOfDomainRoles, Field(..., description="Domain Roles", min_length=1)
+    ]
     medical_roles: Annotated[
         OptListOfMedicalRoles, Field(..., description="Medical roles")
     ]
-    scopes: Annotated[ListOfStrs, Field(..., description="Scopes")]
+    scopes: Annotated[ListOfStrs, Field(..., description="Scopes", min_length=1)]
 
 
 class TenantCredentials(
@@ -239,12 +245,12 @@ class TenantCredentials(
         EntityIdentifier[OrganizationType], Field(..., description="Organization")
     ]
     domain_roles: Annotated[
-        ListOfOrganizationRoles, Field(..., description="Domain Roles")
+        ListOfOrganizationRoles, Field(..., description="Domain Roles", min_length=1)
     ]
     medical_roles: Annotated[
-        OptListOfMedicalRoles, Field(..., description="Medical roles")
+        OptListOfMedicalRoles, Field(..., description="Medical roles", min_length=1)
     ]
-    scopes: Annotated[ListOfStrs, Field(..., description="Scopes")]
+    scopes: Annotated[ListOfStrs, Field(..., description="Scopes", min_length=1)]
 
 
 class SystemCredentials(
@@ -260,9 +266,11 @@ class SystemCredentials(
     domain: Literal[Domain.SYSTEM] = Domain.SYSTEM
     user: Annotated[EntityIdentifier[UserType], Field(..., description="User")]
     organization: Annotated[None, Field(None, description="Organization")] = None
-    domain_roles: Annotated[ListOfSystemRoles, Field(..., description="Domain Roles")]
+    domain_roles: Annotated[
+        ListOfSystemRoles, Field(..., description="Domain Roles", min_length=1)
+    ]
     medical_roles: Annotated[None, Field(None, description="Medical roles")] = None
-    scopes: Annotated[ListOfStrs, Field(..., description="Scopes")]
+    scopes: Annotated[ListOfStrs, Field(..., description="Scopes", min_length=1)]
 
 
 AnyCredentials = (
@@ -365,6 +373,200 @@ class GenericAuthentication(
             return cls.extract(conn)
 
         return dependency
+
+    @cached_property
+    def is_valid_domain(self) -> bool:
+        return self.credentials.domain is not None and isinstance(
+            self.credentials.domain, Domain
+        )
+
+    @cached_property
+    def is_system_domain(self) -> bool:
+        return self.is_valid_domain and self.credentials.domain is Domain.SYSTEM
+
+    @cached_property
+    def is_tenant_domain(self) -> bool:
+        return self.is_valid_domain and self.credentials.domain is Domain.TENANT
+
+    @cached_property
+    def is_valid_domain_roles(self) -> bool:
+        return self.credentials.domain_roles is not None and (
+            all(
+                isinstance(role, OrganizationRole)
+                for role in self.credentials.domain_roles
+            )
+            or all(
+                isinstance(role, SystemRole) for role in self.credentials.domain_roles
+            )
+        )
+
+    def has_all_domain_roles(self, roles: ListOfDomainRoles) -> bool:
+        return (
+            self.is_valid_domain_roles
+            and self.credentials.domain_roles is not None
+            and all(role in self.credentials.domain_roles for role in roles)
+        )
+
+    def has_any_domain_roles(self, roles: ListOfDomainRoles) -> bool:
+        return (
+            self.is_valid_domain_roles
+            and self.credentials.domain_roles is not None
+            and any(role in self.credentials.domain_roles for role in roles)
+        )
+
+    def has_domain_roles(
+        self, roles: ListOfDomainRoles, *, logic: Literal["all", "any"]
+    ) -> bool:
+        if logic == "all":
+            return self.has_all_domain_roles(roles)
+        elif logic == "any":
+            return self.has_any_domain_roles(roles)
+
+    @cached_property
+    def is_valid_system_roles(self) -> bool:
+        return (
+            self.is_valid_domain_roles
+            and self.credentials.domain_roles is not None
+            and all(
+                isinstance(role, SystemRole) for role in self.credentials.domain_roles
+            )
+        )
+
+    def has_all_system_roles(self, roles: ListOfSystemRoles) -> bool:
+        return (
+            self.is_valid_system_roles
+            and self.credentials.domain_roles is not None
+            and all(role in self.credentials.domain_roles for role in roles)
+        )
+
+    def has_any_system_roles(self, roles: ListOfSystemRoles) -> bool:
+        return (
+            self.is_valid_system_roles
+            and self.credentials.domain_roles is not None
+            and any(role in self.credentials.domain_roles for role in roles)
+        )
+
+    def has_system_roles(
+        self, roles: ListOfSystemRoles, *, logic: Literal["all", "any"]
+    ) -> bool:
+        if logic == "all":
+            return self.has_all_system_roles(roles)
+        elif logic == "any":
+            return self.has_any_system_roles(roles)
+
+    @cached_property
+    def is_valid_tenant_roles(self) -> bool:
+        return (
+            self.is_valid_domain_roles
+            and self.credentials.domain_roles is not None
+            and all(
+                isinstance(role, OrganizationRole)
+                for role in self.credentials.domain_roles
+            )
+        )
+
+    def has_all_tenant_roles(self, roles: ListOfOrganizationRoles) -> bool:
+        return (
+            self.is_valid_tenant_roles
+            and self.credentials.domain_roles is not None
+            and all(role in self.credentials.domain_roles for role in roles)
+        )
+
+    def has_any_tenant_roles(self, roles: ListOfOrganizationRoles) -> bool:
+        return (
+            self.is_valid_tenant_roles
+            and self.credentials.domain_roles is not None
+            and any(role in self.credentials.domain_roles for role in roles)
+        )
+
+    def has_tenant_roles(
+        self, roles: ListOfOrganizationRoles, *, logic: Literal["all", "any"]
+    ) -> bool:
+        if logic == "all":
+            return self.has_all_tenant_roles(roles)
+        elif logic == "any":
+            return self.has_any_tenant_roles(roles)
+
+    @cached_property
+    def is_valid_medical_roles(self) -> bool:
+        return self.credentials.medical_roles is not None and all(
+            isinstance(role, MedicalRole) for role in self.credentials.medical_roles
+        )
+
+    def has_all_medical_roles(self, roles: ListOfMedicalRoles) -> bool:
+        return (
+            self.is_valid_medical_roles
+            and self.credentials.medical_roles is not None
+            and all(role in self.credentials.medical_roles for role in roles)
+        )
+
+    def has_any_medical_roles(self, roles: ListOfMedicalRoles) -> bool:
+        return (
+            self.is_valid_medical_roles
+            and self.credentials.medical_roles is not None
+            and any(role in self.credentials.medical_roles for role in roles)
+        )
+
+    def has_medical_roles(
+        self, roles: ListOfMedicalRoles, *, logic: Literal["all", "any"]
+    ) -> bool:
+        if logic == "all":
+            return self.has_all_medical_roles(roles)
+        elif logic == "any":
+            return self.has_any_medical_roles(roles)
+
+    @cached_property
+    def is_authenticated(self) -> bool:
+        return (
+            self.user.is_authenticated
+            and self.is_valid_domain
+            and self.credentials.user is not None
+            and self.is_valid_domain_roles
+            and self.credentials.scopes is not None
+        )
+
+    @cached_property
+    def is_system(self) -> bool:
+        return (
+            self.is_authenticated
+            and self.user.organization is None
+            and self.is_system_domain
+            and self.credentials.organization is None
+            and self.credentials.domain_roles is not None
+            and self.is_valid_system_roles
+            and self.credentials.medical_roles is None
+        )
+
+    @cached_property
+    def is_system_administrator(self) -> bool:
+        return self.is_system and self.has_all_system_roles([SystemRole.ADMINISTRATOR])
+
+    @cached_property
+    def is_tenant(self) -> bool:
+        return (
+            self.is_authenticated
+            and self.user.organization is not None
+            and self.is_tenant_domain
+            and self.credentials.organization is not None
+            and self.credentials.domain_roles is not None
+            and self.is_valid_tenant_roles
+        )
+
+    @cached_property
+    def is_tenant_owner(self) -> bool:
+        return self.is_tenant and self.has_all_tenant_roles([OrganizationRole.OWNER])
+
+    @cached_property
+    def is_tenant_administrator(self) -> bool:
+        return self.is_tenant and self.has_all_tenant_roles(
+            [OrganizationRole.ADMINISTRATOR]
+        )
+
+    @cached_property
+    def is_tenant_owner_or_administrator(self) -> bool:
+        return self.is_tenant and self.has_any_tenant_roles(
+            [OrganizationRole.OWNER, OrganizationRole.ADMINISTRATOR]
+        )
 
 
 class BaseAuthentication(GenericAuthentication[BaseCredentials, BaseUser]):
@@ -480,42 +682,19 @@ OptAnyAuthenticationT = TypeVar("OptAnyAuthenticationT", bound=OptAnyAuthenticat
 def is_authenticated(
     authentication: AnyAuthentication,
 ) -> TypeGuard[AnyAuthenticatedAuthentication]:
-    return (
-        authentication.user.is_authenticated
-        and authentication.credentials.domain is not None
-        and authentication.credentials.user is not None
-        and authentication.credentials.domain_roles is not None
-        and authentication.credentials.scopes is not None
-    )
-
-
-def is_tenant(
-    authentication: AnyAuthentication,
-) -> TypeGuard[TenantAuthentication]:
-    return (
-        authentication.user.is_authenticated
-        and authentication.user.organization is not None
-        and authentication.credentials.domain is Domain.TENANT
-        and authentication.credentials.user is not None
-        and authentication.credentials.organization is not None
-        and authentication.credentials.domain_roles is not None
-        and authentication.credentials.scopes is not None
-    )
+    return authentication.is_authenticated
 
 
 def is_system(
     authentication: AnyAuthentication,
 ) -> TypeGuard[SystemAuthentication]:
-    return (
-        authentication.user.is_authenticated
-        and authentication.user.organization is None
-        and authentication.credentials.domain is Domain.SYSTEM
-        and authentication.credentials.user is not None
-        and authentication.credentials.organization is None
-        and authentication.credentials.domain_roles is not None
-        and authentication.credentials.medical_roles is None
-        and authentication.credentials.scopes is not None
-    )
+    return authentication.is_system
+
+
+def is_tenant(
+    authentication: AnyAuthentication,
+) -> TypeGuard[TenantAuthentication]:
+    return authentication.is_tenant
 
 
 class AuthenticationMixin(BaseModel, Generic[OptAnyAuthenticationT]):
